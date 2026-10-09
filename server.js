@@ -190,7 +190,7 @@ app.get('/movie/:id/:slug?', async (req, res) => {
     `;
 
     const headHtml = head({
-      title: seoTitle('movie', data.title, (data.release_date || '').slice(0, 4)),
+      title: seoTitle('movie', data.title, data.original_title, (data.release_date || '').slice(0, 4)),
       description: seoDescription(data.title, (data.release_date || '').slice(0, 4), (data.genres || []).map(g => g.name).join(', ')),
       url: `${SITE_URL}/movie/${id}/${encodeURIComponent(correctSlug)}`,
       image: img(data.backdrop_path || data.poster_path, 'w780'),
@@ -272,7 +272,7 @@ app.get('/tv/:id/:slug?', async (req, res) => {
     `;
 
     const headHtml = head({
-      title: seoTitle('tv', data.name, (data.first_air_date || '').slice(0, 4)),
+      title: seoTitle('tv', data.name, null, (data.first_air_date || '').slice(0, 4)),
       description: seoDescription(data.name, (data.first_air_date || '').slice(0, 4), (data.genres || []).map(g => g.name).join(', ')),
       url: `${SITE_URL}/tv/${id}/${encodeURIComponent(correctSlug)}`,
       image: img(data.backdrop_path || data.poster_path, 'w780'),
@@ -337,7 +337,7 @@ app.get('/tv/:id/season/:season/episode/:episode', async (req, res) => {
     `;
 
     const headHtml = head({
-      title: seoTitle('tv', tvTitle, year, episode, isLastEpisode),
+      title: seoTitle('tv', tvTitle, null, year, episode, isLastEpisode),
       description: `ดูซีรีส์ ${tvTitle} ซีซั่น ${season} ตอนที่ ${episode} (${epData.name}) ซับไทย อรุณรุ่ง`,
       url: `${SITE_URL}/tv/${id}/season/${season}/episode/${episode}`,
       image: img(epData.still_path || tvData.backdrop_path, 'w780'),
@@ -404,78 +404,4 @@ app.get('/person/:id/:slug?', async (req, res) => {
 
 // ---------- API proxy ----------
 app.get('/api/search', async (req, res) => {
-  try {
-    const q = req.query.q || '';
-    if (!q.trim()) return res.json({ results: [] });
-    const data = await tmdb('/search/multi', { query: q });
-    const results = data.results
-      .filter(r => r.media_type === 'movie' || r.media_type === 'tv')
-      .slice(0, 8)
-      .map(r => ({
-        id: r.id,
-        type: r.media_type,
-        title: r.title || r.name,
-        year: (r.release_date || r.first_air_date || '').slice(0, 4),
-        poster: img(r.poster_path, 'w92'),
-        slug: slugify(r.title || r.name),
-      }));
-    res.json({ results });
-  } catch (e) {
-    res.status(500).json({ results: [], error: true });
-  }
-});
-
-app.get('/api/season/:tvId/:seasonNumber', async (req, res) => {
-  try {
-    const { tvId, seasonNumber } = req.params;
-    const data = await tmdb(`/tv/${tvId}/season/${seasonNumber}`);
-    const episodes = (data.episodes || []).map(ep => ({
-      number: ep.episode_number,
-      name: ep.name,
-      airDate: ep.air_date,
-      rating: ep.vote_average ? ep.vote_average.toFixed(1) : '-',
-      overview: ep.overview,
-      still: img(ep.still_path, 'w300'),
-      url: `/tv/${tvId}/season/${seasonNumber}/episode/${ep.episode_number}`
-    }));
-    res.json({ episodes });
-  } catch (e) {
-    res.status(500).json({ episodes: [], error: true });
-  }
-});
-
-// ---------- sitemap.xml ----------
-app.get('/sitemap.xml', async (req, res) => {
-  try {
-    const [mp, mt, tp, tt] = await Promise.all([
-      tmdb('/movie/popular'),
-      tmdb('/movie/top_rated'),
-      tmdb('/tv/popular'),
-      tmdb('/tv/top_rated'),
-    ]);
-    const today = new Date().toISOString().slice(0, 10);
-    const urls = [
-      { loc: `${SITE_URL}/movie`, priority: '1.0', changefreq: 'daily' },
-      { loc: `${SITE_URL}/tv`, priority: '1.0', changefreq: 'daily' },
-      ...[...mp.results, ...mt.results].map(m => ({ loc: `${SITE_URL}/movie/${m.id}/${encodeURIComponent(slugify(m.title))}`, priority: '0.7', changefreq: 'weekly' })),
-      ...[...tp.results, ...tt.results].map(t => ({ loc: `${SITE_URL}/tv/${t.id}/${encodeURIComponent(slugify(t.name))}`, priority: '0.7', changefreq: 'weekly' })),
-    ];
-    const uniq = [...new Map(urls.map(u => [u.loc, u])).values()];
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${uniq.map(u => `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`).join('\n')}
-</urlset>`;
-    res.type('application/xml').send(xml);
-  } catch (e) {
-    res.status(500).send('');
-  }
-});
-
-// ---------- robots.txt ----------
-app.get('/robots.txt', (req, res) => {
-  res.type('text/plain').send(`User-agent: *\nAllow: /\nSitemap: ${SITE_URL}/sitemap.xml\n`);
-});
-
-app.listen(PORT, () => {
-  console.log(`DooNung เซิร์ฟเวอร์ทำงานที่: http://localhost:${PORT}`);
-});
+  try
